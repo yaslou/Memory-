@@ -22,6 +22,36 @@ h1 {
   text-shadow: 2px 2px 8px #000;
 }
 
+h2 {
+  color: #d4af37;
+  text-shadow: 1px 1px 4px #000;
+}
+
+button {
+  background: #2d5a3d;
+  color: #d4af37;
+  border: 2px solid #4a8c5c;
+  border-radius: 10px;
+  padding: 12px 24px;
+  margin: 6px;
+  font-family: Georgia, serif;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px #d4af37;
+}
+
+#timer {
+  color: #d4af37;
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+  text-shadow: 1px 1px 4px #000;
+}
+
 #grille {
   display: grid;
   grid-template-columns: repeat(4, 90px);
@@ -62,6 +92,8 @@ body.joueur2 {
      </style>
   </head>
   <body>
+    <button id="btn-retour" onclick="retour()" style="display:none; position:fixed; top:20px; left:20px;">← Retour</button>
+
     <div id="choix-mode">
   <h2>Mode de jeu</h2>
   <button onclick="choisirMode(1)">1 Joueur</button>
@@ -74,6 +106,7 @@ body.joueur2 {
   <button onclick="demarrer(2)">Niveau 2</button>
   <button onclick="demarrer(3)">Niveau 3</button>
 </div>
+    <div id="timer" style="display:none">⏱️ 00:00</div>
     <div id="grille"></div>
     <div id="info-joueur" style="display:none; color:#d4af37; font-size:1.5rem; margin-top:20px;">
   <span id="tour"></span>
@@ -123,14 +156,59 @@ var mode = 1;
 var joueurActuel = 1;
 var scoreJ1 = 0;
 var scoreJ2 = 0;
+var secondes = 0;
+var timerInterval = null;
+
+function formaterTemps(s) {
+  var min = Math.floor(s / 60);
+  var sec = s % 60;
+  if (min < 10) min = '0' + min;
+  if (sec < 10) sec = '0' + sec;
+  return min + ':' + sec;
+}
+
+function demarrerTimer() {
+  arreterTimer();
+  secondes = 0;
+  document.getElementById('timer').textContent = '⏱️ 00:00';
+  document.getElementById('timer').style.display = 'block';
+  timerInterval = setInterval(function() {
+    secondes++;
+    document.getElementById('timer').textContent = '⏱️ ' + formaterTemps(secondes);
+  }, 1000);
+}
+
+function arreterTimer() {
+  if (timerInterval !== null) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
 
 function choisirMode(m) {
   mode = m;
   document.getElementById('choix-mode').style.display = 'none';
   document.getElementById('choix-niveau').style.display = 'block';
 }
+
+function retour() {
+  // On vide la grille et on remet tout à zéro
+  arreterTimer();
+  document.getElementById('timer').style.display = 'none';
+  document.getElementById('grille').innerHTML = '';
+  document.getElementById('info-joueur').style.display = 'none';
+  document.getElementById('choix-niveau').style.display = 'none';
+  document.getElementById('btn-retour').style.display = 'none';
+  document.getElementById('choix-mode').style.display = 'block';
+  document.body.className = '';
+  carteRetournee = null;
+  enAttente = false;
+  pairestrouvees = 0;
+}
+
 function demarrer(niveau) {
   scoreJ1 = 0;
+  scoreJ2 = 0;
 joueurActuel = 1;
 if (mode === 2) {
   document.getElementById('info-joueur').style.display = 'block';
@@ -139,6 +217,7 @@ if (mode === 2) {
   document.body.className = 'joueur1';
 }
   document.getElementById('choix-niveau').style.display = 'none';
+  document.getElementById('btn-retour').style.display = 'block';
   var nbPaires = niveau === 1 ? 8 : niveau === 2 ? 12 : 16;
   var cols = niveau === 1 ? 4 : niveau === 2 ? 6 : 8;
 
@@ -151,6 +230,8 @@ if (mode === 2) {
   pairestrouvees = 0;
   carteRetournee = null;
   enAttente = false;
+
+  demarrerTimer();
 
   var grille = document.getElementById('grille');
   grille.innerHTML = '';
@@ -182,12 +263,14 @@ if (mode === 2) {
   document.getElementById('scores').textContent = 'J1: ' + scoreJ1 + ' | J2: ' + scoreJ2;
 }
 if (pairestrouvees === nbPaires) {
+  arreterTimer();
+  var temps = formaterTemps(secondes);
   if (mode === 2) {
-    if (scoreJ1 > scoreJ2) { alert('Joueur 1 gagne ! ' + scoreJ1 + ' vs ' + scoreJ2); }
-    else if (scoreJ2 > scoreJ1) { alert('Joueur 2 gagne ! ' + scoreJ2 + ' vs ' + scoreJ1); }
-    else { alert('Egalité ! ' + scoreJ1 + ' partout !'); }
+    if (scoreJ1 > scoreJ2) { alert('Joueur 1 gagne ! ' + scoreJ1 + ' vs ' + scoreJ2 + '\nTemps : ' + temps); }
+    else if (scoreJ2 > scoreJ1) { alert('Joueur 2 gagne ! ' + scoreJ2 + ' vs ' + scoreJ1 + '\nTemps : ' + temps); }
+    else { alert('Egalité ! ' + scoreJ1 + ' partout !\nTemps : ' + temps); }
   } else {
-    alert('Bravo tu as gagné !');
+    alert('Bravo tu as gagné !\nTemps : ' + temps);
   }
 }
           carteRetournee = null;
