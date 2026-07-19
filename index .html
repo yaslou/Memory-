@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Memory</title>
+    <style>
+    body {
+  background-color: #1a3a2a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  font-family: Georgia, serif;
+}
+
+h1 {
+  color: #d4af37;
+  font-size: 3rem;
+  margin-bottom: 30px;
+  text-shadow: 2px 2px 8px #000;
+}
+
+#grille {
+  display: grid;
+  grid-template-columns: repeat(4, 90px);
+  gap: 20px;
+}
+
+.carte {
+  width: 90px;
+  height: 90px;
+  background: #2d5a3d;
+  border: 2px solid #4a8c5c;
+  border-radius: 12px;
+  font-size: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.carte:hover {
+  transform: scale(1.1);
+}
+
+.trouvee {
+  background: #5a8a3a;
+  border-color: #d4af37;
+  box-shadow: 0 0 10px #d4af37;
+}
+body.joueur1 {
+  background-color: #1a3a2a;
+}
+
+body.joueur2 {
+  background-color: #1a2a3a;
+}
+
+     </style>
+  </head>
+  <body>
+    <div id="choix-mode">
+  <h2>Mode de jeu</h2>
+  <button onclick="choisirMode(1)">1 Joueur</button>
+  <button onclick="choisirMode(2)">2 Joueurs</button>
+</div>
+
+<div id="choix-niveau" style="display:none">
+  <h2>Choisis ton niveau</h2>
+  <button onclick="demarrer(1)">Niveau 1</button>
+  <button onclick="demarrer(2)">Niveau 2</button>
+  <button onclick="demarrer(3)">Niveau 3</button>
+</div>
+    <div id="grille"></div>
+    <div id="info-joueur" style="display:none; color:#d4af37; font-size:1.5rem; margin-top:20px;">
+  <span id="tour"></span>
+  <span id="scores"></span>
+</div>
+
+    <h1>Memory</h1>
+
+    <script>
+      function jouerSon(type) {
+  var ctx = new AudioContext();
+  var osc = ctx.createOscillator();
+  var gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  if (type === 'retourner') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+  } else if (type === 'paire') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+  } else if (type === 'erreur') {
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(150, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+  }
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.5);
+}
+      var tousEmojis = ['🌹','🫀','🎶','🕶️','🌊','🧿','🃏','🌙',
+                  '⭐','🍄','🔮','🎭','🗝️','🪬','💎','🎪'];
+
+var pairestrouvees = 0;
+var carteRetournee = null;
+var enAttente = false;
+var mode = 1;
+var joueurActuel = 1;
+var scoreJ1 = 0;
+var scoreJ2 = 0;
+
+function choisirMode(m) {
+  mode = m;
+  document.getElementById('choix-mode').style.display = 'none';
+  document.getElementById('choix-niveau').style.display = 'block';
+}
+function demarrer(niveau) {
+  scoreJ1 = 0;
+joueurActuel = 1;
+if (mode === 2) {
+  document.getElementById('info-joueur').style.display = 'block';
+  document.getElementById('tour').textContent = 'Tour : Joueur 1  ';
+  document.getElementById('scores').textContent = 'J1: 0 | J2: 0';
+  document.body.className = 'joueur1';
+}
+  document.getElementById('choix-niveau').style.display = 'none';
+  var nbPaires = niveau === 1 ? 8 : niveau === 2 ? 12 : 16;
+  var cols = niveau === 1 ? 4 : niveau === 2 ? 6 : 8;
+
+  var selection = tousEmojis.slice(0, nbPaires);
+  var emojis = selection.concat(selection);
+  emojis.sort(function() { return Math.random() - 0.5; });
+
+  document.getElementById('grille').style.gridTemplateColumns = 'repeat(' + cols + ', 90px)';
+
+  pairestrouvees = 0;
+  carteRetournee = null;
+  enAttente = false;
+
+  var grille = document.getElementById('grille');
+  grille.innerHTML = '';
+
+  for (var i = 0; i < emojis.length; i++) {
+    var carte = document.createElement('div');
+    carte.textContent = '❓';
+    carte.dataset.emoji = emojis[i];
+    carte.classList.add('carte');
+        carte.onclick = function() {
+      if (this === carteRetournee) return;
+      if (this.classList.contains('trouvee')) return;
+      if (enAttente) return;
+      this.textContent = this.dataset.emoji;
+      jouerSon('retourner');
+
+      if (carteRetournee === null) {
+        carteRetournee = this;
+      } else {
+        enAttente = true;
+        var carte1 = carteRetournee;
+        var carte2 = this;
+
+        if (carte1.dataset.emoji === carte2.dataset.emoji) {
+          pairestrouvees++;
+jouerSon('paire');
+if (mode === 2) {
+  if (joueurActuel === 1) { scoreJ1++; } else { scoreJ2++; }
+  document.getElementById('scores').textContent = 'J1: ' + scoreJ1 + ' | J2: ' + scoreJ2;
+}
+if (pairestrouvees === nbPaires) {
+  if (mode === 2) {
+    if (scoreJ1 > scoreJ2) { alert('Joueur 1 gagne ! ' + scoreJ1 + ' vs ' + scoreJ2); }
+    else if (scoreJ2 > scoreJ1) { alert('Joueur 2 gagne ! ' + scoreJ2 + ' vs ' + scoreJ1); }
+    else { alert('Egalité ! ' + scoreJ1 + ' partout !'); }
+  } else {
+    alert('Bravo tu as gagné !');
+  }
+}
+          carteRetournee = null;
+          carte1.classList.add('trouvee');
+          carte2.classList.add('trouvee');
+          enAttente = false;
+        } else {
+          jouerSon('erreur');
+          if (mode === 2) {
+  joueurActuel = joueurActuel === 1 ? 2 : 1;
+  document.getElementById('tour').textContent = 'Tour : Joueur ' + joueurActuel + '  ';
+  document.body.className = 'joueur' + joueurActuel;
+}
+          setTimeout(function() {
+            carte1.textContent = '❓';
+            carte2.textContent = '❓';
+            carteRetournee = null;
+            enAttente = false;
+          }, 1000);
+        }
+      }
+    };
+    grille.appendChild(carte);
+  }
+}
+    </script>
+
+  </body>
+</html>
